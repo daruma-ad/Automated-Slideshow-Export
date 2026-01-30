@@ -42,10 +42,12 @@ export async function POST(req: NextRequest) {
                     }
                 }
 
-                // For Videos: Base64 is too heavy, keep using File URL (usually <Video> tag handles this better or we hope)
+                // For Videos: Use local server URL (HTTP) instead of file:// to avoid Chrome URL safety check errors
                 if (s.type === 'video') {
-                    const normalizedPath = fsPath.replace(/\\/g, '/');
-                    return { ...s, src: `file://${normalizedPath}` };
+                    const host = req.headers.get('host') || 'localhost:3000';
+                    const protocol = req.headers.get('x-forwarded-proto') || 'http';
+                    // Ensure src starts with /uploads/ (it is verified in the if condition above `if (src.startsWith('/uploads/'))`)
+                    return { ...s, src: `${protocol}://${host}${src}` };
                 }
             }
             return s;

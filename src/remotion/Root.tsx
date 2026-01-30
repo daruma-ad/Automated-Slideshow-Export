@@ -9,7 +9,12 @@ export const RemotionRoot: React.FC = () => {
             <Composition
                 id="Slideshow"
                 component={MyComposition as any}
-                durationInFrames={300} // Default placeholder, will be overridden by inputProps
+                calculateMetadata={({ props }) => {
+                    const totalDurationSeconds = props.slides.reduce((acc: number, slide: any) => acc + (slide.duration || 3), 0);
+                    return {
+                        durationInFrames: Math.max(1, Math.ceil(totalDurationSeconds * COMP_FPS)),
+                    };
+                }}
                 fps={COMP_FPS}
                 width={1920}
                 height={1080}
