@@ -9,15 +9,16 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@remotion/bundler": "^4.0.411",
-    "@remotion/player": "^4.0.411",
-    "@remotion/renderer": "^4.0.411",
+    "@remotion/bundler": "^4.0.414",
+    "@remotion/player": "^4.0.414",
+    "@remotion/renderer": "^4.0.414",
+    "@remotion/transitions": "^4.0.414",
     "clsx": "^2.1.1",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "remotion": "^4.0.411",
+    "remotion": "^4.0.414",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {

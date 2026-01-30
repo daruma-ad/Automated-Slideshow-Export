@@ -1,5 +1,7 @@
 import React from 'react';
-import { Series, Audio, AbsoluteFill } from 'remotion';
+import { Audio, AbsoluteFill } from 'remotion';
+import { TransitionSeries, linearTiming } from '@remotion/transitions';
+import { fade } from '@remotion/transitions/fade';
 import { Slide } from './Slide';
 import { SlideData } from '../components/Timeline';
 import { SubtitleStyle } from '../components/Controls';
@@ -27,16 +29,24 @@ export const MyComposition: React.FC<MyCompositionProps> = ({ slides, subtitleSt
                 />
             )}
 
-            <Series>
-                {slides.map((slide) => {
+            <TransitionSeries>
+                {slides.map((slide, index) => {
                     const durationFrames = Math.floor(slide.duration * COMP_FPS);
                     return (
-                        <Series.Sequence key={slide.id} durationInFrames={durationFrames}>
-                            <Slide slide={slide} subtitleStyle={subtitleStyle} />
-                        </Series.Sequence>
+                        <React.Fragment key={slide.id}>
+                            <TransitionSeries.Sequence durationInFrames={durationFrames}>
+                                <Slide slide={slide} subtitleStyle={subtitleStyle} />
+                            </TransitionSeries.Sequence>
+                            {index < slides.length - 1 && (
+                                <TransitionSeries.Transition
+                                    presentation={fade()}
+                                    timing={linearTiming({ durationInFrames: 15 })}
+                                />
+                            )}
+                        </React.Fragment>
                     );
                 })}
-            </Series>
+            </TransitionSeries>
         </AbsoluteFill>
     );
 };

@@ -16,6 +16,8 @@ interface ControlsProps {
     setBgm: (b: string | null) => void;
     onExport: () => void;
     isExporting: boolean;
+    onClearAllText: () => void;
+    onBgmUpload: (file: File) => void;
 }
 
 export function Controls({
@@ -26,7 +28,9 @@ export function Controls({
     bgm,
     setBgm,
     onExport,
-    isExporting
+    isExporting,
+    onClearAllText,
+    onBgmUpload
 }: ControlsProps) {
     return (
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 space-y-6">
@@ -55,9 +59,17 @@ export function Controls({
             </div>
 
             <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-600 block flex items-center gap-1">
-                    <Type size={14} /> Subtitle Style
-                </label>
+                <div className="flex justify-between items-center">
+                    <label className="text-sm font-medium text-gray-600 block flex items-center gap-1">
+                        <Type size={14} /> Subtitle Style
+                    </label>
+                    <button
+                        onClick={onClearAllText}
+                        className="text-xs text-red-500 hover:text-red-700 underline"
+                    >
+                        Clear All Text
+                    </button>
+                </div>
                 <select
                     value={subtitleStyle}
                     onChange={(e) => setSubtitleStyle(e.target.value as SubtitleStyle)}
@@ -83,7 +95,29 @@ export function Controls({
                     <option value="upbeat">Upbeat</option>
                     <option value="calm">Calm / Piano</option>
                     <option value="lofi">Lo-Fi</option>
+                    <option value="fun1">Fun 1</option>
                 </select>
+
+                <div className="pt-2">
+                    <input
+                        type="file"
+                        id="bgm-upload"
+                        className="hidden"
+                        accept="audio/*"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                                onBgmUpload(file);
+                            }
+                        }}
+                    />
+                    <label
+                        htmlFor="bgm-upload"
+                        className="block w-full text-center py-2 px-4 border border-dashed border-gray-300 rounded text-sm text-gray-500 hover:border-blue-500 hover:text-blue-600 cursor-pointer transition-colors"
+                    >
+                        Upload Custom BGM (MP3)
+                    </label>
+                </div>
             </div>
             <div className="pt-4 border-t border-gray-100">
                 <button

@@ -13,12 +13,22 @@ export default function Home() {
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
   const [subtitleStyle, setSubtitleStyle] = useState<SubtitleStyle>('simple');
   const [bgm, setBgm] = useState<string | null>(null);
+  const [customAudioUrl, setCustomAudioUrl] = useState<string | null>(null);
+  const [customAudioFile, setCustomAudioFile] = useState<File | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportedUrl, setExportedUrl] = useState<string | null>(null);
 
   // Constants
   const width = aspectRatio === '16:9' ? 1920 : 1080;
   const height = aspectRatio === '16:9' ? 1080 : 1920;
+
+  // Handler for custom BGM upload
+  const handleBgmUpload = (file: File) => {
+    const url = URL.createObjectURL(file);
+    setCustomAudioUrl(url);
+    setCustomAudioFile(file);
+    setBgm(null); // Clear preset BGM
+  };
 
   // Handler for file upload
   const handleFilesAccepted = useCallback((files: File[]) => {
@@ -48,6 +58,12 @@ export default function Home() {
   // Calculate total duration in frames
   const totalDurationSeconds = slides.reduce((acc, slide) => acc + slide.duration, 0);
   const durationInFrames = Math.max(1, Math.ceil(totalDurationSeconds * COMP_FPS));
+
+  const handleClearAllText = () => {
+    if (confirm('Are you sure you want to clear all captions?')) {
+      setSlides((prev) => prev.map((s) => ({ ...s, text: '' })));
+    }
+  };
 
   const handleExport = async () => {
     if (slides.length === 0) return;
@@ -80,6 +96,38 @@ export default function Home() {
         return slide;
       }));
 
+      // 2. Upload Custom BGM if exists
+      let uploadedAudioUrl = undefined;
+      if (customAudioFile) {
+        const formData = new FormData();
+        formData.append('file', customAudioFile);
+        formData.append('sessionId', sessionId);
+
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await uploadRes.json();
+        if (data.success) {
+          uploadedAudioUrl = `file://${process.cwd()}/public${data.path}`; // Construct absolute file path for server usage logic or reuse reading logic?
+          // Actually, my render API logic for BGM reads from bgm ID OR expects audioUrl.
+          // If I pass audioUrl string as a path, render API needs to know how to handle it.
+          // Currently render API handles `bgm` (id) -> public/bgm/{id}.mp3
+          // AND `audioUrl` input prop. 
+          // My modified render API (Step 161) handles `bgm` -> reads file -> base64.
+          // But it doesn't do special base64 conversion for `audioUrl` passed in inputProps!
+          // Wait, render API step 152: 
+          // `let { slides, subtitleStyle, bgm, aspectRatio } = body;`
+          // `const inputProps = { ..., audioUrl }`
+          // If I pass `audioUrl` in `body` (Step 88 of render/route.ts), does it use it?
+          // In the original code (Step 152), audioUrl is derived from `bgm`.
+          // I need to update render/route.ts to ALSO accept an explicit `audioUrl` from request body!
+
+          // Let's set uploadedAudioUrl to the relative path for now, enabling render API to locate it.
+          uploadedAudioUrl = data.path;
+        }
+      }
+
       // 2. Render
       const renderRes = await fetch('/api/render', {
         method: 'POST',
@@ -88,7 +136,8 @@ export default function Home() {
           slides: processedSlides,
           aspectRatio,
           subtitleStyle,
-          bgm
+          bgm: bgm, // if null, check customAudioUrl
+          customAudioPath: uploadedAudioUrl // Passing this new param
         })
       });
 
@@ -124,9 +173,17 @@ export default function Home() {
             subtitleStyle={subtitleStyle}
             setSubtitleStyle={setSubtitleStyle}
             bgm={bgm}
-            setBgm={setBgm}
+            setBgm={(b) => {
+              setBgm(b);
+              if (b) {
+                setCustomAudioUrl(null);
+                setCustomAudioFile(null);
+              }
+            }}
             onExport={handleExport}
             isExporting={isExporting}
+            onClearAllText={handleClearAllText}
+            onBgmUpload={handleBgmUpload}
           />
 
           <Timeline
@@ -152,7 +209,8 @@ export default function Home() {
                 inputProps={{
                   slides,
                   subtitleStyle,
-                  bgm
+                  bgm,
+                  audioUrl: customAudioUrl || undefined // Pass blob URL for preview
                 }}
                 durationInFrames={durationInFrames}
                 fps={COMP_FPS}

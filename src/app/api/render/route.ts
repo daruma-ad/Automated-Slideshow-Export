@@ -58,15 +58,33 @@ export async function POST(req: NextRequest) {
         if (bgm) {
             const bgmPath = join(process.cwd(), 'public', 'bgm', `${bgm}.mp3`);
             try {
-                await access(bgmPath); // Verify file exists
-                const normalizedBgmPath = bgmPath.replace(/\\/g, '/');
-                audioUrl = `file://${normalizedBgmPath}`;
+                // Read audio file and convert to Base64 to avoid file:// permission issues in Headless Chrome
+                const audioBuffer = await readFile(bgmPath);
+                const base64Audio = audioBuffer.toString('base64');
+                audioUrl = `data:audio/mp3;base64,${base64Audio}`;
             } catch (e) {
-                console.warn(`BGM file not found: ${bgmPath}. Rendering without audio.`);
-                // Do NOT set bgm to null here if we want to avoid errors, 
-                // but if we null it, the component won't try to render <Audio>.
+                console.warn(`BGM file not found or could not be read: ${bgmPath}. Rendering without audio.`);
+                console.error(e);
                 finalBgm = null;
                 audioUrl = undefined;
+            }
+        } else if (body.customAudioPath) {
+            // Handle uploaded custom audio
+            const audioPath = join(process.cwd(), 'public', body.customAudioPath);
+            try {
+                const audioBuffer = await readFile(audioPath);
+                const base64Audio = audioBuffer.toString('base64');
+                // Detect mime type roughly or just assume mp3/wav/m4a works with audio/mp3 or general
+                // Better to check extension;
+                const ext = extname(audioPath).substring(1).toLowerCase();
+                let mime = 'audio/mpeg';
+                if (ext === 'wav') mime = 'audio/wav';
+                if (ext === 'm4a' || ext === 'mp4') mime = 'audio/mp4';
+
+                audioUrl = `data:${mime};base64,${base64Audio}`;
+                finalBgm = 'custom'; // Just to ensure Audio component renders if logic checks for bgm presence
+            } catch (e) {
+                console.error("Failed to read custom audio:", audioPath, e);
             }
         }
 
@@ -90,6 +108,7 @@ export async function POST(req: NextRequest) {
             serveUrl: bundleLocation,
             id: compositionId,
             inputProps,
+            timeoutInMilliseconds: 120000,
         });
 
         const outputDir = join(process.cwd(), 'public', 'out');
@@ -104,6 +123,7 @@ export async function POST(req: NextRequest) {
             codec: 'h264',
             outputLocation: outputPath,
             inputProps,
+            timeoutInMilliseconds: 120000,
         });
 
         return NextResponse.json({ success: true, url: `/out/${fileName}` });
